@@ -6,6 +6,8 @@ React web dashboard for viewing and managing screen recordings with real-time pr
 
 - 📹 **Recording List** - View all your recordings
 - ⏱️ **Real-time Progress** - Watch processing steps update live via WebSocket
+- 🌍 **Language Selection** - Choose target language for AI voiceover translation
+- 📝 **Draft Preview** - Preview recordings before generating final video
 - 🎬 **Video Playback** - Play completed recordings in-browser
 - 📥 **Download** - Download your finished videos
 - ❌ **Error Handling** - Clear feedback when processing fails
@@ -18,6 +20,37 @@ React web dashboard for viewing and managing screen recordings with real-time pr
 - **Tailwind CSS** - Styling
 - **Socket.io Client** - Real-time updates
 - **Lucide React** - Icons
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Clueso Dashboard                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│   ┌──────────────────────────────────────────────────────┐  │
+│   │                      App.tsx                          │  │
+│   │                   (Router Logic)                      │  │
+│   └──────────────────┬───────────────────────────────────┘  │
+│                      │                                       │
+│        ┌─────────────┼─────────────┐                        │
+│        ▼             ▼             ▼                        │
+│   ┌─────────┐   ┌─────────┐   ┌─────────────────┐          │
+│   │Dashboard│   │Recordings│   │RecordingDetails │          │
+│   │  Page   │   │  List   │   │(Video + Timeline)│          │
+│   └─────────┘   └─────────┘   └────────┬────────┘          │
+│                                        │                    │
+│                              ┌─────────┴─────────┐          │
+│                              ▼                   ▼          │
+│                         ┌────────┐         ┌────────┐       │
+│                         │ api.ts │         │socket.ts│      │
+│                         │ (HTTP) │         │  (WS)  │       │
+│                         └────┬───┘         └────┬───┘       │
+│                              │                  │           │
+└──────────────────────────────┼──────────────────┼───────────┘
+                               ▼                  ▼
+                          Backend API      WebSocket Server
+```
 
 ## 📁 Project Structure
 
@@ -109,6 +142,13 @@ type ProcessingStep =
   | "merging"
   | "completed"
   | "failed";
+
+type RecordingStatus =
+  | "uploaded"
+  | "processing"
+  | "draft_ready" // Paused after transcription
+  | "completed"
+  | "failed";
 ```
 
 ### WebSocket Events
@@ -194,12 +234,14 @@ api.deleteRecording(id): Promise<void>
 ```typescript
 interface Recording {
   id: string;
-  status: "uploaded" | "processing" | "completed" | "failed";
+  status: "uploaded" | "processing" | "draft_ready" | "completed" | "failed";
   currentStep?: string;
+  targetLanguage?: string; // Selected language for translation
   title?: string;
   description?: string;
+  transcript?: string; // Raw transcript (shown in draft mode)
   finalVideoPath?: string;
-  cleanedScript?: string;
+  cleanedScript?: string; // AI-cleaned/translated script
   errorMessage?: string;
   createdAt: string;
   updatedAt: string;
